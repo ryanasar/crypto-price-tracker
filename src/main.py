@@ -1,15 +1,12 @@
 from data_collection import load_ohlcv
-from features import add_price_features, add_volume_features, add_volatility_features, add_indicator_features
+from features import *
 from pathlib import Path
 
 import pandas as pd
 
 btc = load_ohlcv(Path('data/raw/BTC_USD_1h.parquet'))
-btc = add_price_features(btc)
-btc = add_volume_features(btc)
-btc = add_volatility_features(btc)
-btc = add_indicator_features(btc)
+btc = add_time_features(btc)
 
-print(btc.columns.tolist())
+print(btc[['hour_sin', 'hour_cos', 'dow_sin', 'dow_cos']].describe())
 print()
-print(btc[['rsi_14', 'macd_hist', 'bb_percent', 'bb_width']].describe())
+print(btc[['hour_sin', 'hour_cos']].head(26))

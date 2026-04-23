@@ -62,9 +62,24 @@ def add_indicator_features(df):
     return df
 
 
+def add_time_features(df):
+    df = df.copy()
 
-    
+    # encode hour and day to account for cycle wrapping
+    df['hour_sin'] = np.sin(2 * np.pi * df.index.hour / 24)
+    df['hour_cos'] = np.cos(2 * np.pi * df.index.hour / 24)
+
+    df['dow_sin'] = np.sin(2 * np.pi * df.index.dayofweek / 7)
+    df['dow_cos'] = np.cos(2 * np.pi * df.index.dayofweek / 7)  
+
+    return df
 
 
+def build_features(df):
+    df = add_price_features(df)
+    df = add_volume_features(df)
+    df = add_volatility_features(df)
+    df = add_indicator_features(df)
+    df = add_time_features(df)
 
-
+    return df
