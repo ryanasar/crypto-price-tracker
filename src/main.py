@@ -1,12 +1,16 @@
-from data_collection import load_ohlcv
-from features import *
+import pandas as pd
 from pathlib import Path
 
-import pandas as pd
+from features import load_and_combine_symbols
+from targets import build_target_pooled
 
-btc = load_ohlcv(Path('data/raw/BTC_USD_1h.parquet'))
-btc = add_time_features(btc)
+combined = load_and_combine_symbols('data/raw', timeframe='1h')
+combined['target'] = build_target_pooled(combined, horizon=1, fee_threshold=0.002)
 
-print(btc[['hour_sin', 'hour_cos', 'dow_sin', 'dow_cos']].describe())
+print("Target stats per ticker:")
+print(combined.groupby('ticker')['target'].agg(['count', 'sum', 'mean']))
 print()
-print(btc[['hour_sin', 'hour_cos']].head(26))
+print("Checking last row per ticker (should be <NA>):")
+for ticker, group in combined.groupby('ticker'):
+    last = group.iloc[-1]
+    print(f"  {ticker}: close={last['close']:.2f}, target={last['target']}")

@@ -1,5 +1,7 @@
+from pathlib import Path
 import numpy as np
 import pandas as pd
+from data_collection import load_ohlcv
 import ta
 
 def add_price_features(df):
@@ -83,3 +85,21 @@ def build_features(df):
     df = add_time_features(df)
 
     return df
+
+def load_and_combine_symbols(data_dir, timeframe='1h'):
+    data_dir = Path(data_dir)
+    all_dfs = []
+    
+    for path in sorted(data_dir.glob(f'*_{timeframe}.parquet')):
+        # extract ticker from filename
+        ticker = path.stem.rsplit('_', 1)[0]
+        
+        df = load_ohlcv(path)
+        df = build_features(df)
+        df['ticker'] = ticker
+        
+        all_dfs.append(df)
+    
+    combined = pd.concat(all_dfs)
+    combined = combined.sort_index()
+    return combined
