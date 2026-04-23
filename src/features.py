@@ -31,6 +31,23 @@ def add_volume_features(df):
     df['volume_change_1h'] = np.log(df['volume'] / df['volume'].shift(1))
 
     return df
+
+def add_volatility_features(df):
+    df = df.copy()
+
+    df['volatility_24h']  = df['return_1h'].rolling(24).std()
+    df['volatility_72h']  = df['return_1h'].rolling(72).std()
+    df['volatility_168h'] = df['return_1h'].rolling(168).std()
+
+    df['vol_regime_24h'] = df['volatility_24h'] / df['volatility_168h']
+
+    df['abs_return_1h'] = np.abs(df['return_1h'])
+    
+    return df
+    
+
+
+
     
 
 
