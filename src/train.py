@@ -41,17 +41,54 @@ def split_train_test(df, test_fraction=0.2):
 
     return train, test
 
+
+def train_model(train, test, feature_cols=FEATURE_COLS):
+    x_train = train[feature_cols]
+    y_train = train['target'].astype(int)
+
+    x_test = test[feature_cols]
+    y_test = test['target'].astype(int)
+
+    scale_pos_weight = (y_train == 0).sum() / (y_train == 1).sum()
+
+    model = XGBClassifier(
+        n_estimators=300,
+        max_depth=5,
+        learning_rate=0.05,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        reg_lambda=1.0,
+        scale_pos_weight=scale_pos_weight,
+        random_state=42,
+        eval_metric='logloss',
+        n_jobs=-1,
+    )
+
+    model.fit(x_train, y_train)
+
+    y_prob = model.predict_proba(x_test)[:, 1]
+
+    predictions = pd.DataFrame({
+        'y_true': y_test.values,
+        'y_prob': y_prob,
+    }, index=x_test.index)
+
+    return model, predictions
+
+
 if __name__ == '__main__':
     df = prepare_data()
     train, test = split_train_test(df, test_fraction=0.2)
-    
-    print(f"Train shape: {train.shape}")
-    print(f"Test shape:  {test.shape}")
-    print(f"\nTrain range: {train.index.min()} to {train.index.max()}")
-    print(f"Test range:  {test.index.min()} to {test.index.max()}")
-    print(f"\nTrain positive fraction: {train['target'].mean():.3f}")
-    print(f"Test  positive fraction: {test['target'].mean():.3f}")
-    print(f"\nTrain rows per ticker:")
-    print(train.groupby('ticker').size())
-    print(f"\nTest rows per ticker:")
-    print(test.groupby('ticker').size())
+    model, predictions = train_model(train, test)
+
+    test_with_pred = test.copy()
+    test_with_pred['y_prob'] = predictions['y_prob'].values
+
+    from sklearn.metrics import roc_auc_score
+
+    print("\nAUC per ticker (test set):")
+    for ticker in test_with_pred['ticker'].unique():
+        subset = test_with_pred[test_with_pred['ticker'] == ticker]
+        auc = roc_auc_score(subset['target'], subset['y_prob'])
+        pos_rate = subset['target'].mean()
+        print(f"  {ticker}: AUC = {auc:.4f}, positive rate = {pos_rate:.4f}, n = {len(subset)}")
