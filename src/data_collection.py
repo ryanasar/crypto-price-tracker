@@ -14,6 +14,7 @@ def fetch_ohlcv_batch(exchange, symbol, timeframe, since=None, limit=300):
 
     return df
 
+
 def fetch_ohlcv_range(exchange, symbol, timeframe, start_ms, end_ms, limit=300):
 
     cursor = start_ms
@@ -42,11 +43,13 @@ def fetch_ohlcv_range(exchange, symbol, timeframe, start_ms, end_ms, limit=300):
         return pd.DataFrame(columns=['open', 'high', 'low', 'close', 'volume'])
     return pd.concat(all_batches)
 
+
 def save_ohlcv(df, path):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
     df.to_parquet(path, engine='pyarrow', compression='snappy')
+
 
 def validate_ohlcv(df, timeframe):
     report = {
@@ -104,12 +107,14 @@ def validate_ohlcv(df, timeframe):
         report['issues'].append(f'{len(missing)} missing bars ({pct:.2f}% of expected)')
 
     return report
-    
+
+
 def load_ohlcv(path):
     df = pd.read_parquet(path, engine='pyarrow')
     if df.index.tz is None:
         df.index = df.index.tz_localize('UTC')
     return df
+
 
 if __name__ == '__main__':
     exchange = ccxt.coinbase()

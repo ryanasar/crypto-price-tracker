@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import ta
 
 def add_price_features(df):
     df = df.copy()
@@ -19,6 +20,7 @@ def add_price_features(df):
 
     return df
 
+
 def add_volume_features(df):
     df = df.copy()
 
@@ -32,6 +34,7 @@ def add_volume_features(df):
 
     return df
 
+
 def add_volatility_features(df):
     df = df.copy()
 
@@ -44,7 +47,19 @@ def add_volatility_features(df):
     df['abs_return_1h'] = np.abs(df['return_1h'])
     
     return df
+
+
+def add_indicator_features(df):
+    df = df.copy()
+
+    df['rsi_14'] = ta.momentum.rsi(df['close'], window=14)
+
+    df['macd_hist'] = ta.trend.macd_diff(df['close']) / df['close']
+
+    df['bb_percent'] = ta.volatility.bollinger_pband(df['close'])
+    df['bb_width'] = ta.volatility.bollinger_wband(df['close'])
     
+    return df
 
 
 
