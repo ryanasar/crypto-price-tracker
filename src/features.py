@@ -3,14 +3,6 @@ import pandas as pd
 
 def add_price_features(df):
     df = df.copy()
-    """
-    Add price-derived features to a single-symbol OHLCV DataFrame.
-    Returns a new DataFrame with the original columns plus:
-        return_1h, return_6h, return_24h, return_72h
-        log_return_1h
-        price_to_ma_24, price_to_ma_168
-        range_position_24
-    """
 
     df['return_1h'] = df['close'].pct_change(1)
     df['return_6h'] = df['close'].pct_change(6)
@@ -22,10 +14,23 @@ def add_price_features(df):
     df['price_to_ma_24h'] = df['close'] / df['close'].rolling(24).mean()
     df['price_to_ma_168h'] = df['close'] / df['close'].rolling(168).mean()
 
-    df['range_position_24h'] = (df['close'] - df['low'].rolling(24).min()) / (df['high'].rolling(24).max() - df['low'].rolling(24).min())
+    df['range_position_24h'] = ((df['close'] - df['low'].rolling(24).min()) 
+                                / (df['high'].rolling(24).max() - df['low'].rolling(24).min()))
 
     return df
 
+def add_volume_features(df):
+    df = df.copy()
+
+    df['volume_ratio_24h'] = df['volume'] / df['volume'].rolling(24).mean()
+    df['volume_ratio_168h'] = df['volume'] / df['volume'].rolling(168).mean()
+
+    df['signed_volume_ratio_24h'] = (
+    df['volume_ratio_24h'] * np.sign(df['return_1h'])).rolling(24).mean()
+
+    df['volume_change_1h'] = np.log(df['volume'] / df['volume'].shift(1))
+
+    return df
     
 
 
