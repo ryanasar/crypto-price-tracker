@@ -21,7 +21,7 @@ FEATURE_COLS = [
     'hour_sin', 'hour_cos', 'dow_sin', 'dow_cos',
 ]
 
-def prepare_data(data_dir='data/raw', horizon=1, fee_threshold=0.002):
+def prepare_data(data_dir='data/raw', horizon=1, fee_threshold=0.000):
     data = load_and_combine_symbols(data_dir=data_dir)
 
     data['target'] = build_target_pooled(df=data, horizon=horizon, fee_threshold=fee_threshold)
@@ -107,39 +107,44 @@ def walkforward_evaluate(df, feature_cols=FEATURE_COLS, initial_train_years=2, t
             continue
         
         X_train = train[feature_cols]
-        y_train = train['target'].astype(int)
+        y_train_mag = train['target'].astype(int)           # magnitude
+        y_train_dir = train['target_direction'].astype(int) # direction
+
         X_test  = test[feature_cols]
-        y_test  = test['target'].astype(int)
+        y_test_mag = test['target'].astype(int)
+        y_test_dir = test['target_direction'].astype(int)
         
-        scale_pos_weight = (y_train == 0).sum() / (y_train == 1).sum()
+        scale_pos_weight_mag = (y_train_mag == 0).sum() / (y_train_mag == 1).sum()
+        scale_pos_weight_dir = (y_train_dir == 0).sum() / (y_train_dir == 1).sum()
         
-        model = XGBClassifier(
-            n_estimators=300,
-            max_depth=5,
-            learning_rate=0.05,
-            subsample=0.8,
-            colsample_bytree=0.8,
-            reg_lambda=1.0,
-            scale_pos_weight=scale_pos_weight,
-            random_state=42,
-            eval_metric='logloss',
-            n_jobs=-1,
-        )
-        model.fit(X_train, y_train)
-        
-        y_prob = model.predict_proba(X_test)[:, 1]
+        def make_model(spw):
+            return XGBClassifier(
+                n_estimators=300, max_depth=5, learning_rate=0.05,
+                subsample=0.8, colsample_bytree=0.8, reg_lambda=1.0,
+                scale_pos_weight=spw, random_state=42,
+                eval_metric='logloss', n_jobs=-1,
+            )
+
+        mag_model = make_model(scale_pos_weight_mag).fit(X_train, y_train_mag)
+        dir_model = make_model(scale_pos_weight_dir).fit(X_train, y_train_dir)
+
+        p_mag = mag_model.predict_proba(X_test)[:, 1]
+        p_dir = dir_model.predict_proba(X_test)[:, 1]
         
         fold_preds = pd.DataFrame({
-            'y_true': y_test.values,
-            'y_prob': y_prob,
+            'y_true_magnitude': y_test_mag.values,
+            'y_true_direction': y_test_dir.values,
+            'p_magnitude': p_mag,
+            'p_direction': p_dir,
             'ticker': test['ticker'].values,
+            'close': test['close'].values,
             'fold': fold_idx,
         }, index=X_test.index)
-        
+
         all_predictions.append(fold_preds)
         
-        print(f"Fold {fold_idx:2d}/{len(folds)}: train={len(train):,}, test={len(test):,}, "
-              f"test_range={test_start.date()} to {test_end.date()}")
+        #print(f"Fold {fold_idx:2d}/{len(folds)}: train={len(train):,}, test={len(test):,}, "
+              #f"test_range={test_start.date()} to {test_end.date()}")
     
     return pd.concat(all_predictions)
 
@@ -172,6 +177,6 @@ if __name__ == '__main__':
         subset = predictions[predictions['fold'] == fold]
         try:
             auc = roc_auc_score(subset['y_true'], subset['y_prob'])
-            print(f"  Fold {fold:2d}: AUC = {auc:.4f}, n = {len(subset):,}")
+            # print(f"  Fold {fold:2d}: AUC = {auc:.4f}, n = {len(subset):,}")
         except ValueError:
             print(f"  Fold {fold:2d}: couldn't compute AUC (single class?)")
