@@ -7,17 +7,17 @@ import ta
 def add_price_features(df):
     df = df.copy()
 
-    df['return_1h'] = df['close'].pct_change(1)
-    df['return_6h'] = df['close'].pct_change(6)
-    df['return_24h'] = df['close'].pct_change(24)
-    df['return_72h'] = df['close'].pct_change(72)
+    df['return_1'] = df['close'].pct_change(1)
+    df['return_6'] = df['close'].pct_change(6)
+    df['return_24'] = df['close'].pct_change(24)
+    df['return_72'] = df['close'].pct_change(72)
 
-    df['log_return_1h'] = np.log(df['close'] / df['close'].shift(1))
+    df['log_return_1'] = np.log(df['close'] / df['close'].shift(1))
 
-    df['price_to_ma_24h'] = df['close'] / df['close'].rolling(24).mean()
-    df['price_to_ma_168h'] = df['close'] / df['close'].rolling(168).mean()
+    df['price_to_ma_24'] = df['close'] / df['close'].rolling(24).mean()
+    df['price_to_ma_168'] = df['close'] / df['close'].rolling(168).mean()
 
-    df['range_position_24h'] = ((df['close'] - df['low'].rolling(24).min()) 
+    df['range_position_24'] = ((df['close'] - df['low'].rolling(24).min()) 
                                 / (df['high'].rolling(24).max() - df['low'].rolling(24).min()))
 
     return df
@@ -26,13 +26,13 @@ def add_price_features(df):
 def add_volume_features(df):
     df = df.copy()
 
-    df['volume_ratio_24h'] = df['volume'] / df['volume'].rolling(24).mean()
-    df['volume_ratio_168h'] = df['volume'] / df['volume'].rolling(168).mean()
+    df['volume_ratio_24'] = df['volume'] / df['volume'].rolling(24).mean()
+    df['volume_ratio_168'] = df['volume'] / df['volume'].rolling(168).mean()
 
-    df['signed_volume_ratio_24h'] = (
-    df['volume_ratio_24h'] * np.sign(df['return_1h'])).rolling(24).mean()
+    df['signed_volume_ratio_24'] = (
+    df['volume_ratio_24'] * np.sign(df['return_1'])).rolling(24).mean()
 
-    df['volume_change_1h'] = np.log(df['volume'] / df['volume'].shift(1))
+    df['volume_change_1'] = np.log(df['volume'] / df['volume'].shift(1))
 
     return df
 
@@ -40,13 +40,13 @@ def add_volume_features(df):
 def add_volatility_features(df):
     df = df.copy()
 
-    df['volatility_24h']  = df['return_1h'].rolling(24).std()
-    df['volatility_72h']  = df['return_1h'].rolling(72).std()
-    df['volatility_168h'] = df['return_1h'].rolling(168).std()
+    df['volatility_24']  = df['return_1'].rolling(24).std()
+    df['volatility_72']  = df['return_1'].rolling(72).std()
+    df['volatility_168'] = df['return_1'].rolling(168).std()
 
-    df['vol_regime_24h'] = df['volatility_24h'] / df['volatility_168h']
+    df['vol_regime_24'] = df['volatility_24'] / df['volatility_168']
 
-    df['abs_return_1h'] = np.abs(df['return_1h'])
+    df['abs_return_1'] = np.abs(df['return_1'])
     
     return df
 

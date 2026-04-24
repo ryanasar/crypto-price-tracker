@@ -4,8 +4,8 @@ import ccxt
 import pandas as pd
 import time
 
+
 def fetch_ohlcv_batch(exchange, symbol, timeframe, since=None, limit=300):
-    
     ohlcv_data = exchange.fetch_ohlcv(symbol, timeframe=timeframe, since=since, limit=limit)
 
     df = pd.DataFrame(ohlcv_data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
@@ -16,11 +16,10 @@ def fetch_ohlcv_batch(exchange, symbol, timeframe, since=None, limit=300):
 
 
 def fetch_ohlcv_range(exchange, symbol, timeframe, start_ms, end_ms, limit=300):
-
     cursor = start_ms
     timeframe_ms = exchange.parse_timeframe(timeframe) * 1000
     all_batches = []
-    
+
     while cursor < end_ms:
         batch_df = fetch_ohlcv_batch(
             exchange,
@@ -29,16 +28,16 @@ def fetch_ohlcv_range(exchange, symbol, timeframe, start_ms, end_ms, limit=300):
             since=cursor,
             limit=limit,
         )
-        
+
         if batch_df.empty:
             break
-        
+
         all_batches.append(batch_df)
-        
+
         last_ts = int(batch_df.index[-1].timestamp() * 1000)
         cursor = last_ts + timeframe_ms
-        time.sleep(0.25) # hide from coinbase rate limits
-    
+        time.sleep(0.25)  # hide from coinbase rate limits
+
     if not all_batches:
         return pd.DataFrame(columns=['open', 'high', 'low', 'close', 'volume'])
     return pd.concat(all_batches)
@@ -116,33 +115,43 @@ def load_ohlcv(path):
     return df
 
 
-if __name__ == '__main__':
+def collect_all_data(symbols, timeframe, years_back, output_dir, limit=300):
     exchange = ccxt.coinbase()
-    
-    end_ms = int(time.time() * 1000) # now in ms
-    start_ms = end_ms - (4 * 365.25 * 24 * 60 * 60 * 1000)  # 4 years ago in ms
 
-    symbols = ['BTC/USD', 'ETH/USD']
+    end_ms = int(time.time() * 1000)
+    start_ms = end_ms - int(years_back * 365.25 * 24 * 60 * 60 * 1000)
+
+    output_dir = Path(output_dir)
 
     for symbol in symbols:
         df = fetch_ohlcv_range(
             exchange,
             symbol=symbol,
-            timeframe='1h',
+            timeframe=timeframe,
             start_ms=start_ms,
             end_ms=end_ms,
-            limit=300, # max for coinbase
+            limit=limit,
         )
 
-        filename = f"{symbol.replace('/', '_')}_1h.parquet"
-        path = Path('data/raw') / filename
+        filename = f"{symbol.replace('/', '_')}_{timeframe}.parquet"
+        path = output_dir / filename
         save_ohlcv(df, path)
 
         print(f"  Saved {len(df):,} rows to {path}")
         print(f"  Range: {df.index[0]} to {df.index[-1]}")
 
-        report = validate_ohlcv(df, timeframe='1h')
+        report = validate_ohlcv(df, timeframe=timeframe)
         print(f"  Validation: {report['n_rows']:,} rows, {report['missing_rows']} missing of {report['expected_rows']:,}")
         if report['issues']:
             for issue in report['issues']:
                 print(issue)
+
+
+if __name__ == '__main__':
+    # standalone run uses the defaults below; main.py drives this via collect_all_data()
+    collect_all_data(
+        symbols=['BTC/USD', 'ETH/USD'],
+        timeframe='1h',
+        years_back=4,
+        output_dir='data/raw',
+    )
